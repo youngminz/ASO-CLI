@@ -221,6 +221,17 @@ func isPersistentBrowserInUseErr(err error) bool {
 		strings.Contains(s, "opening in existing browser session")
 }
 
+func playwrightCLIEnv() []string {
+	env := os.Environ()
+	for i, e := range env {
+		if strings.HasPrefix(e, "TMPDIR=") {
+			env[i] = "TMPDIR=/tmp"
+			return env
+		}
+	}
+	return append(env, "TMPDIR=/tmp")
+}
+
 func runPlaywrightCLI(ctx context.Context, args ...string) ([]byte, error) {
 	// Prefer the Codex-installed wrapper script if present; otherwise fall back to npx directly.
 	codexHome := os.Getenv("CODEX_HOME")
@@ -237,7 +248,7 @@ func runPlaywrightCLI(ctx context.Context, args ...string) ([]byte, error) {
 		if fi, err := os.Stat(wrapper); err == nil && !fi.IsDir() {
 			wd, _ := os.Getwd()
 			cmd := exec.CommandContext(ctx, "bash", append([]string{wrapper}, args...)...)
-			cmd.Env = os.Environ()
+			cmd.Env = playwrightCLIEnv()
 			if strings.TrimSpace(wd) != "" {
 				cmd.Dir = wd
 			}
@@ -252,7 +263,7 @@ func runPlaywrightCLI(ctx context.Context, args ...string) ([]byte, error) {
 	// Fallback: npx --package @playwright/cli playwright-cli ...
 	wd, _ := os.Getwd()
 	cmd := exec.CommandContext(ctx, "npx", append([]string{"--yes", "--package", "@playwright/cli", "playwright-cli"}, args...)...)
-	cmd.Env = os.Environ()
+	cmd.Env = playwrightCLIEnv()
 	if strings.TrimSpace(wd) != "" {
 		cmd.Dir = wd
 	}
